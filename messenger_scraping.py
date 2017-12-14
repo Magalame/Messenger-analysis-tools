@@ -85,8 +85,11 @@ def getMessageList(client, thread_id, thread_type):
         #print("Size of the array: " + str(sys.getsizeof(msg_list)) + " bytes")
         messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp)
         #messages = np.array(client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp))
-        #msg_list = np.concatenate([msg_list,messages])
+        #before_concat = time.time()
         msg_list = msg_list + messages[1:]  #we remove the first one because of the way the fetchThread function works. We could use "before=messages[-1].timestamp-1" and keep the first element for clarity's sake but it works as well without
+        #msg_list = np.concatenate([msg_list,messages])
+        #after_concat = time.time()
+        #print("Concat performance: " + str(after_concat-before_concat)[:-13] + "s")
         count = count + 1
         #print("Count: " + str(count))
     
@@ -114,7 +117,7 @@ def scrapeMessages(address='', password='', thread_id='', is_group=False):
         
         while choice.lower() != 'g' and choice.lower() != 'u':
             choice = input("Do you want to scrape a group chat (\'g\') or a simple chat (\'u\')")
-        if choice == 'u':
+        if choice.lower() == 'u':
             is_group = False
             while choice.lower() != "y" and choice.lower() != "n":
                 choice = input("Do you want to print your friends list, with their ID? (Press \'y\' if you're not sure) [y/n]:")
@@ -122,7 +125,7 @@ def scrapeMessages(address='', password='', thread_id='', is_group=False):
             if choice.lower() == "y":
                 printFriends(client)
         
-        if choice == 'g':
+        if choice.lower() == 'g':
             is_group = True
             
     while not thread_id:    
