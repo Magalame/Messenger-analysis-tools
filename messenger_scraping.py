@@ -54,28 +54,26 @@ def printMsg(liste, personnes): #print the messeges in a list of message objects
         print(personnes[i.author] + ": " + i.text)
 
 
-
-def getMessageList(author_id, thread_id, thread_type):
-
-    author_id = client.uid
-    thread_id = #the id of the thread you're interested in 
-    thread_type = ThreadType.USER
+#if scraping for a one-to-one chat then set thread_type = ThreadType.USER
+# for groups use ThreadType.GROUP
+#client should be the object created with "client = Client(args.address, args.address)"
+#and "thread_id" the ID of the thread you're interested in
+def getMessageList(client, thread_id, thread_type):
 
     msg_list = []
-# Gets the last 10 messages sent to the thread
     count = 1
-    print("Count: " + str(count))
+    #print("Count: " + str(count))
     messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000)
 
     appendItems(messages, msg_list)
 
     while True:
         messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp)
-        appendItems(messages[1:], msg_list) #as we remove the last one, we do not double count the last list (which will have only one element)
+        appendItems(messages[1:], msg_list)  #we remove the first one because of the way the fetchThread function works. We could use "before=messages[-1].timestamp-1" and keep the first element for clarity's sake but it works as well without
         count = count + 1
-        print("Count: " + str(count))
+        #print("Count: " + str(count))
     
-        if messages[0].uid == messages[-1].uid:
+        if messages[0].uid == messages[-1].uid:#as we remove the last one, we do not double count the last list (which will have only one element)
             break
 
     return msg_list
