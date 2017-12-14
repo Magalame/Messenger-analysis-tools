@@ -6,6 +6,7 @@ from fbchat.models import *
 import getpass
 import os
 import sys
+import time
 
 parser = argparse.ArgumentParser()
 
@@ -57,7 +58,7 @@ def check_for_time(liste):
     return True
 
 def printMsg(liste, personnes): #print the messeges in a list of message objects
-    personnes = {}#dictionnary with the persons in the chat
+    personnes = {} #dictionnary with the persons in the chat
     for i in liste:
         print(personnes[i.author] + ": " + i.text)
 
@@ -72,13 +73,18 @@ def getMessageList(client, thread_id, thread_type):
 
     msg_list = []
     count = 1
-    #print("Count: " + str(count))
+    
+    cur_time = start_time = time.time()
+    cur_size = 0
     messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000)
 
     appendItems(messages, msg_list)
-
     while True:
-        print(str(count*10000) + "th message loaded")
+        
+        print(str(count*10000) + "th message in " + str(time.time() - start_time)[:-13] + "s" + "\t| " + str(sys.getsizeof(msg_list)) + " B" + "\t increase: " + str(sys.getsizeof(msg_list)-cur_size) + "\t length: " + str(len(msg_list)) + "\t delay: " + str(time.time()-cur_time)[:-13] + "s")
+        cur_time = time.time()
+        cur_size = sys.getsizeof(msg_list)
+        #print("Size of the array: " + str(sys.getsizeof(msg_list)) + " bytes")
         messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp)
         appendItems(messages[1:], msg_list)  #we remove the first one because of the way the fetchThread function works. We could use "before=messages[-1].timestamp-1" and keep the first element for clarity's sake but it works as well without
         count = count + 1
