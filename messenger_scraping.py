@@ -36,14 +36,14 @@ def printFriends(client): #prints friend list with IDs
         if user.uid != "0" and user.uid != 0:
             print(user.name,a*"\t",user.uid)
 
-#checks that we haven't double included a message in a list
+#checks that we haven't double-included a message in a list
 def check_for_duplication(liste): #https://stackoverflow.com/questions/1541797/check-for-duplicates-in-a-flat-list
   seen = set()
-  for i,client in enumerate(liste):
-    if client.uid in seen: 
-        print(i)
+  for i,msg in enumerate(liste):
+    if msg.uid in seen: 
+        print("Duplication at " + str(i))
         return True
-    seen.add(client.uid)
+    seen.add(msg.uid)
   return False
 
 #checks that there is no time discontinuity in the list
@@ -53,6 +53,36 @@ def check_for_time(liste):
             print("Fails at index " + str(i))
             return False
     return True
+
+def check_for_attachment(liste): #returns a list with the indexes of all objects having an attachment
+    attached = []
+    for i,msg in enumerate(liste):
+        if msg.attachments != [] and msg.attachments != None:
+            #print("Attachment at index " + str(i))
+            attached = attached + [i]
+    return attached
+
+def test(liste):
+    indexes = check_for_attachment(liste)
+    for i in indexes:
+        try:
+            print(i,liste[i].attachments[0]['large_preview']['uri'])
+        except:
+            print(i)
+            break
+
+#returns a dictionnary classifying the indexes of the list according to what kind of attachment do they have
+def classify_attachments(liste):
+    indexes = check_for_attachment(liste)
+    classified = {}
+    for i in indexes:
+        for ii,attachment in enumerate(liste[i].attachments):
+            if attachment['__typename'] not in classified.keys():
+                classified.update({attachment['__typename']:[(i,ii)]})
+            else:
+                classified[attachment['__typename']].append((i,ii))
+    return classified
+
 
 def printMsg(liste, personnes): #print the messeges in a list of message objects
     #personnes = {} #dictionnary with the persons in the chat
@@ -93,7 +123,7 @@ def getMessageList(client, thread_id, thread_type):
         count = count + 1
         #print("Count: " + str(count))
     
-        if messages[0].uid == messages[-1].uid:#as we remove the last one, we do not double count the last list (which will have only one element)
+        if messages[0].uid == messages[-1].uid:#as we remove the first one, we do not double count the last list (which will have only one element)
             break
     print("All messages are loaded")
     
@@ -141,3 +171,5 @@ def scrapeMessages(address='', password='', thread_id='', is_group=False):
 if __name__ == "__main__":
     if args.address and args.password:
         scrapeMessages(args.address, args.password)
+        
+
