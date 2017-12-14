@@ -78,7 +78,7 @@ def classify_attachments(liste):
     for i in indexes:
         for ii,attachment in enumerate(liste[i].attachments):
             if attachment['__typename'] not in classified.keys():
-                classified.update({attachment['__typename']:[(i,ii)]})
+                classified.update({attachment['__typename']:[(i,ii)]}) #we put two indexes, i and ii in the dictionnary, because i corresponds to the position in the list, and ii to the position of the attachment in the message
             else:
                 classified[attachment['__typename']].append((i,ii))
     return classified
