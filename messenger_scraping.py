@@ -7,6 +7,7 @@ import getpass
 import os
 import sys
 import time
+import numpy as np
 
 parser = argparse.ArgumentParser()
 
@@ -14,10 +15,6 @@ parser.add_argument('-p','--password', action="store", dest="password", help="Yo
 parser.add_argument('-a','--email_address', action="store", dest="address", help="Your email address")
 
 args = parser.parse_args()
-
-def appendItems(source, target): #appends the elements of a list to another one
-    for i in source:
-        target.append(i)
 
 def printFriends(client): #prints friend list with IDs
     def getKey(user):
@@ -42,11 +39,11 @@ def printFriends(client): #prints friend list with IDs
 #checks that we haven't double included a message in a list
 def check_for_duplication(liste): #https://stackoverflow.com/questions/1541797/check-for-duplicates-in-a-flat-list
   seen = set()
-  for i,x in enumerate(liste):
-    if x.uid in seen: 
+  for i,client in enumerate(liste):
+    if client.uid in seen: 
         print(i)
         return True
-    seen.add(x.uid)
+    seen.add(client.uid)
   return False
 
 #checks that there is no time discontinuity in the list
@@ -58,7 +55,7 @@ def check_for_time(liste):
     return True
 
 def printMsg(liste, personnes): #print the messeges in a list of message objects
-    personnes = {} #dictionnary with the persons in the chat
+    #personnes = {} #dictionnary with the persons in the chat
     for i in liste:
         print(personnes[i.author] + ": " + i.text)
 
@@ -77,6 +74,7 @@ def getMessageList(client, thread_id, thread_type):
     cur_time = start_time = time.time()
     cur_size = 0
     messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000)
+    #messages = np.array(client.fetchThreadMessages(thread_id=thread_id, limit=10000))
     msg_list = messages
 
     while True:
@@ -86,6 +84,8 @@ def getMessageList(client, thread_id, thread_type):
         cur_size = sys.getsizeof(msg_list)
         #print("Size of the array: " + str(sys.getsizeof(msg_list)) + " bytes")
         messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp)
+        #messages = np.array(client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp))
+        #msg_list = np.concatenate([msg_list,messages])
         msg_list = msg_list + messages[1:]  #we remove the first one because of the way the fetchThread function works. We could use "before=messages[-1].timestamp-1" and keep the first element for clarity's sake but it works as well without
         count = count + 1
         #print("Count: " + str(count))
