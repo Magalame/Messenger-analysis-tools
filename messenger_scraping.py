@@ -48,6 +48,14 @@ def check_for_duplication(liste): #https://stackoverflow.com/questions/1541797/c
     seen.add(x.uid)
   return False
 
+#checks that there is no time discontinuity in the list
+def check_for_time(liste): 
+    for i in range(1,len(liste)):
+        if int(liste[i].timestamp) > int(liste[i-1].timestamp): #assuming that the lastest message is at index 0
+            print("Fails at index " + str(i))
+            return False
+    return True
+
 def printMsg(liste, personnes): #print the messeges in a list of message objects
     personnes = {}#dictionnary with the persons in the chat
     for i in liste:
