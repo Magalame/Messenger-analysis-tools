@@ -54,7 +54,7 @@ def check_for_time(liste):
             return False
     return True
 
-def check_for_attachment(liste): #returns a list with the indexes of all objects having an attachment
+def get_attachment_index(liste): #returns a list with the indexes of all objects having an attachment
     attached = []
     for i,msg in enumerate(liste):
         if msg.attachments != [] and msg.attachments != None:
@@ -70,6 +70,12 @@ def test(liste):
         except:
             print(i)
             break
+        
+def test2(dict):
+    for i in list(dict.values())[0]:
+        #print(i)
+        if i[1] != 0:
+            print(i)
 
 #returns a dictionnary classifying the indexes of the list according to what kind of attachment do they have
 def classify_attachments(liste):
