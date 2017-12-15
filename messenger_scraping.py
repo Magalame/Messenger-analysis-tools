@@ -63,7 +63,7 @@ def get_attachment_index(liste): #returns a list with the indexes of all objects
     return attached
 
 def test(liste):
-    indexes = check_for_attachment(liste)
+    indexes = get_attachment_index(liste)
     for i in indexes:
         try:
             print(i,liste[i].attachments[0]['large_preview']['uri'])
@@ -79,7 +79,7 @@ def test2(dict):
 
 #returns a dictionnary classifying the indexes of the list according to what kind of attachment do they have
 def classify_attachments(liste):
-    indexes = check_for_attachment(liste)
+    indexes = get_attachment_index(liste)
     classified = {}
     for i in indexes:
         for ii,attachment in enumerate(liste[i].attachments):
