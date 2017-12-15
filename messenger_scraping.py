@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-from fbchat import log, Client
+from fbchat import Client
 from fbchat.models import *
 import getpass
 import os
 import sys
 import time
-import numpy as np
+import datetime
+import csv
+#import numpy as np
 
 parser = argparse.ArgumentParser()
 
@@ -78,6 +80,7 @@ def test2(dict):
             print(i)
 
 #returns a dictionnary classifying the indexes of the list according to what kind of attachment do they have
+#maybe i should allow for entering the indexes list as an argument
 def classify_attachments(liste):
     indexes = get_attachment_index(liste)
     classified = {}
@@ -89,12 +92,34 @@ def classify_attachments(liste):
                 classified[attachment['__typename']].append((i,ii))
     return classified
 
+def timestamp_to_datetime(liste, utc = False):
+    if not utc:
+        for i in liste:
+            i.datetime = datetime.datetime.fromtimestamp(int(i.timestamp[:-3])) #we stripe the last 3 digits because python doesn't handle it
+    else:
+        for i in liste:
+            i.datetime = datetime.datetime.utcfromtimestamp(int(i.timestamp[:-3]))
 
 def printMsg(liste, personnes): #print the messeges in a list of message objects
     #personnes = {} #dictionnary with the persons in the chat
     for i in liste:
         print(personnes[i.author] + ": " + i.text)
 
+def save_text_csv(liste, namefile):
+    with open(namefile, "w", newline='',encoding='utf-8') as pfile:
+        csv_writer = csv.writer(pfile)
+        csv_writer.writerow(["Date","Author","Text","Message ID"])
+        for i in liste:
+            if i.text != '' and i.text != None:
+                csv_writer.writerow([i.datetime,i.author,i.text,i.uid])
+
+    
+def test4():
+
+    with open('output_file.csv', 'w', newline='', encoding='utf-8') as csv_file:
+        writer = csv.writer(csv_file, delimiter=';')
+        writer.writerow('ç♀8Çé@àæ«')
+        writer.writerow("ç♀8Çé@àæ«")
 
 #if scraping for a one-to-one chat then set thread_type = ThreadType.USER
 # for groups use ThreadType.GROUP
@@ -122,7 +147,7 @@ def getMessageList(client, thread_id, thread_type):
         messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp)
         #messages = np.array(client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp))
         #before_concat = time.time()
-        msg_list = msg_list + messages[1:]  #we remove the first one because of the way the fetchThread function works. We could use "before=messages[-1].timestamp-1" and keep the first element for clarity's sake but it works as well without
+        msg_list = msg_list + messages[1:]  #we remove the first one because of the way the fetchThread function works. We could use "before=int(messages[-1].timestamp)-1" and keep the first element for clarity's sake but it works as well without
         #msg_list = np.concatenate([msg_list,messages])
         #after_concat = time.time()
         #print("Concat performance: " + str(after_concat-before_concat)[:-13] + "s")
@@ -172,7 +197,12 @@ def scrapeMessages(address='', password='', thread_id='', is_group=False):
     else:
         thread_type = ThreadType.USER
         
-    return getMessageList(client, thread_id, thread_type)
+    messageList = getMessageList(client, thread_id, thread_type)
+
+    client.logout()
+    
+    return messageList
+
 
 if __name__ == "__main__":
     if args.address and args.password:
