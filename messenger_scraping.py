@@ -109,11 +109,10 @@ def save_text_csv(liste, namefile):
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
         csv_writer = csv.writer(pfile)
         csv_writer.writerow(["Date","Author","Text","Message ID"])
-        for i in liste:
+        for i in liste[::-1]:
             if i.text != '' and i.text != None:
                 csv_writer.writerow([i.datetime,i.author,i.text,i.uid])
 
-    
 def test4():
 
     with open('output_file.csv', 'w', newline='', encoding='utf-8') as csv_file:
