@@ -105,7 +105,7 @@ def printMsg(liste, personnes): #print the messeges in a list of message objects
     for i in liste:
         print(personnes[i.author] + ": " + i.text)
 
-def save_text_csv_datetime(liste, namefile):
+def save_text_datetime_csv(liste, namefile):
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
         csv_writer = csv.writer(pfile)
         csv_writer.writerow(["Date","Author","Text","Message ID"])
