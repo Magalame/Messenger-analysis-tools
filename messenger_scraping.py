@@ -92,7 +92,7 @@ def classify_attachments(liste):
                 classified[attachment['__typename']].append((i,ii))
     return classified
 
-def get_datetime_from_timestamp(liste, utc = False):
+def write_datetime_from_timestamp(liste, utc = False):
     if not utc:
         for i in liste:
             i.datetime = datetime.datetime.fromtimestamp(int(i.timestamp[:-3])) #we stripe the last 3 digits because python doesn't handle it
@@ -115,6 +115,14 @@ def save_text_datetime_csv(liste, namefile):
                 
 def get_name_from_id(client,ID):
    return client.fetchUserInfo(ID)[ID].name
+
+def write_name_from_id(client, liste):
+    id_to_name = {}
+    for i in liste:
+        if i.author not in id_to_name.keys(): #a bit of dynamic programming, otherwise it takes ages
+            id_to_name.update({i.author:get_name_from_id(client,i.author)})
+        i.author_name = id_to_name[i.author]
+            
     
 def test4():
 
