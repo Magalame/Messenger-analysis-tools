@@ -92,7 +92,7 @@ def classify_attachments(liste):
                 classified[attachment['__typename']].append((i,ii))
     return classified
 
-def timestamp_to_datetime(liste, utc = False):
+def get_datetime_from_timestamp(liste, utc = False):
     if not utc:
         for i in liste:
             i.datetime = datetime.datetime.fromtimestamp(int(i.timestamp[:-3])) #we stripe the last 3 digits because python doesn't handle it
@@ -105,14 +105,17 @@ def printMsg(liste, personnes): #print the messeges in a list of message objects
     for i in liste:
         print(personnes[i.author] + ": " + i.text)
 
-def save_text_csv(liste, namefile):
+def save_text_csv_datetime(liste, namefile):
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
         csv_writer = csv.writer(pfile)
         csv_writer.writerow(["Date","Author","Text","Message ID"])
         for i in liste[::-1]:
             if i.text != '' and i.text != None:
                 csv_writer.writerow([i.datetime,i.author,i.text,i.uid])
-
+                
+def get_name_from_id(client,ID):
+   return client.fetchUserInfo(ID)[ID].name
+    
 def test4():
 
     with open('output_file.csv', 'w', newline='', encoding='utf-8') as csv_file:
