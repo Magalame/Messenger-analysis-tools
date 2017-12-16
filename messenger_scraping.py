@@ -105,15 +105,50 @@ def printMsg(liste, personnes): #print the messeges in a list of message objects
     for i in liste:
         print(personnes[i.author] + ": " + i.text)
 
-#todo: add option to use conversion or not for timestamp and author name, or full 
+
 def save_text_datetime_csv(liste, namefile):
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
         csv_writer = csv.writer(pfile)
-        csv_writer.writerow(["Date","Author","Text","Message ID"])
+        csv_writer.writerow(["Date","Author","Text","MessageID"])
         for i in liste[::-1]:
             if i.text != '' and i.text != None:
                 csv_writer.writerow([i.datetime,i.author,i.text,i.uid])
-                
+
+def save_msg_csv(liste, namefile, values_to_save):
+    with open(namefile, "w", newline='',encoding='utf-8') as pfile:
+        csv_writer = csv.writer(pfile)
+        
+        lambda_values = []
+        values_to_save_checked = [] #because the user might enter some values that aren't covered here
+        
+        #could be replaced with a generator, although calling the generator at every csv.writer loop would probably be less efficient
+        for i in values_to_save:
+            if i == "Date":
+                lambda_values.append(lambda _in:_in.datetime)
+                values_to_save_checked.append("Date")
+            elif i == "Author":
+                lambda_values.append(lambda _in:_in.author)
+                values_to_save_checked.append("Author")
+            elif i == "Text":
+                lambda_values.append(lambda _in:_in.text)
+                values_to_save_checked.append("Text")
+            elif i == "MessageID":
+                lambda_values.append(lambda _in:_in.uid)
+                values_to_save_checked.append("MessageID")
+            elif i == "AuthorName":
+                lambda_values.append(lambda _in:_in.author_name)
+                values_to_save_checked.append("AuthorName")
+            elif i == "Timestamp":
+                lambda_values.append(lambda _in:_in.timestamp)
+                values_to_save_checked.append("Timestamp")
+        
+        #test = lambda _in: csv_writer.writerow([_in.datetime,_in.author,_in.text,_in.uid])
+        csv_writer.writerow(values_to_save_checked)
+        for i in liste[::-1]:
+            if i.text != '' and i.text != None:
+                #test(i)
+                csv_writer.writerow([a(i) for a in lambda_values])
+               
 def get_name_from_id(client,ID):
    return client.fetchUserInfo(ID)[ID].name
 
