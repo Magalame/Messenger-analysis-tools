@@ -105,6 +105,7 @@ def printMsg(liste, personnes): #print the messeges in a list of message objects
     for i in liste:
         print(personnes[i.author] + ": " + i.text)
 
+#todo: add option to use conversion or not for timestamp and author name, or full 
 def save_text_datetime_csv(liste, namefile):
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
         csv_writer = csv.writer(pfile)
@@ -122,6 +123,7 @@ def write_name_from_id(client, liste):
         if i.author not in id_to_name.keys(): #a bit of dynamic programming, otherwise it takes ages
             id_to_name.update({i.author:get_name_from_id(client,i.author)})
         i.author_name = id_to_name[i.author]
+    return id_to_name #originally, it isn't the purpose of the function to return the dictionnary, but why waste it? 
             
     
 def test4():
