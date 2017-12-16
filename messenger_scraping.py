@@ -94,11 +94,11 @@ def classify_attachments(liste):
 
 def write_datetime_from_timestamp(liste, utc = False):
     if not utc:
-        for i in liste:
-            i.datetime = datetime.datetime.fromtimestamp(int(i.timestamp[:-3])) #we stripe the last 3 digits because python doesn't handle it
+        for msg in liste:
+            msg.datetime = datetime.datetime.fromtimestamp(int(msg.timestamp[:-3])) #we stripe the last 3 digits because python doesn't handle it
     else:
-        for i in liste:
-            i.datetime = datetime.datetime.utcfromtimestamp(int(i.timestamp[:-3]))
+        for msg in liste:
+            msg.datetime = datetime.datetime.utcfromtimestamp(int(msg.timestamp[:-3]))
 
 def printMsg(liste, personnes): #print the messeges in a list of message objects
     #personnes = {} #dictionnary with the persons in the chat
@@ -110,9 +110,9 @@ def save_text_datetime_csv(liste, namefile):
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
         csv_writer = csv.writer(pfile)
         csv_writer.writerow(["Date","Author","Text","MessageID"])
-        for i in liste[::-1]:
-            if i.text != '' and i.text != None:
-                csv_writer.writerow([i.datetime,i.author,i.text,i.uid])
+        for msg in liste[::-1]:
+            if msg.text != '' and msg.text != None:
+                csv_writer.writerow([msg.datetime,msg.author,msg.text,msg.uid])
 
 def save_msg_csv(liste, namefile, values_to_save):
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
@@ -144,10 +144,10 @@ def save_msg_csv(liste, namefile, values_to_save):
         
         #test = lambda _in: csv_writer.writerow([_in.datetime,_in.author,_in.text,_in.uid])
         csv_writer.writerow(values_to_save_checked)
-        for i in liste[::-1]:
-            if i.text != '' and i.text != None:
+        for msg in liste[::-1]:
+            if msg.text != '' and msg.text != None:
                 #test(i)
-                csv_writer.writerow([a(i) for a in lambda_values])
+                csv_writer.writerow([value(msg) for value in lambda_values])
                
 def get_name_from_id(client,ID):
    return client.fetchUserInfo(ID)[ID].name
