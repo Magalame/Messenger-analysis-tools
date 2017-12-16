@@ -170,9 +170,10 @@ def test4():
 
 #if scraping for a one-to-one chat then set thread_type = ThreadType.USER
 # for groups use ThreadType.GROUP
+#actually convo type is useless here, ignore the above comment
 #client should be the Client object we just created
 #and "thread_id" the ID of the thread you're interested in
-def getMessageList(client, thread_id, thread_type):
+def getMessageList(client, thread_id):
     
     print("Scraping the message list...")
 
@@ -207,7 +208,7 @@ def getMessageList(client, thread_id, thread_type):
     
     return msg_list
 
-def scrapeMessages(address='', password='', thread_id='', is_group=False):
+def scrapeMessages(address='', password='', thread_id=''):
     
     while not address:
         address = input("Please enter your email adress:")
@@ -226,7 +227,7 @@ def scrapeMessages(address='', password='', thread_id='', is_group=False):
         while choice.lower() != 'g' and choice.lower() != 'u':
             choice = input("Do you want to scrape a group chat (\'g\') or a simple chat (\'u\')")
         if choice.lower() == 'u':
-            is_group = False
+            #is_group = False
             while choice.lower() != "y" and choice.lower() != "n":
                 choice = input("Do you want to print your friends list, with their ID? (Press \'y\' if you're not sure) [y/n]:")
     
@@ -234,17 +235,18 @@ def scrapeMessages(address='', password='', thread_id='', is_group=False):
                 printFriends(client)
         
         if choice.lower() == 'g':
-            is_group = True
+            pass
+            #is_group = True
             
     while not thread_id:    
         thread_id = input("Please enter the ID: ")
         
-    if is_group:#we keep it outside of the "if not thread_id:" condition because we also want it to work for parameters
+    """if is_group:#we keep it outside of the "if not thread_id:" condition because we also want it to work for parameters
         thread_type = ThreadType.GROUP
     else:
-        thread_type = ThreadType.USER
+        thread_type = ThreadType.USER"""
         
-    messageList = getMessageList(client, thread_id, thread_type)
+    messageList = getMessageList(client, thread_id)
 
     client.logout()
     
