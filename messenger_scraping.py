@@ -208,7 +208,7 @@ def getMessageList(client, thread_id):
     
     return msg_list
 
-def scrapeMessages(address='', password='', thread_id=''):
+def scrapeMessages(address='', password='', thread_id='', is_group = False):
     
     while not address:
         address = input("Please enter your email adress:")
@@ -247,7 +247,10 @@ def scrapeMessages(address='', password='', thread_id=''):
         thread_type = ThreadType.USER"""
         
     messageList = getMessageList(client, thread_id)
-
+    
+    write_datetime_from_timestamp(messageList)
+    write_name_from_id(client,messageList)
+    
     client.logout()
     
     return messageList
