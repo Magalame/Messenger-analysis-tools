@@ -9,6 +9,7 @@ import sys
 import time
 import datetime
 import csv
+import json
 #import numpy as np
 
 parser = argparse.ArgumentParser()
@@ -39,6 +40,7 @@ def printFriends(client): #prints friend list with IDs
             print(user.name,a*"\t",user.uid)
 
 #checks that we haven't double-included a message in a list
+#maybe replace "true" by an exception
 def check_for_duplication(liste): #https://stackoverflow.com/questions/1541797/check-for-duplicates-in-a-flat-list
   seen = set()
   for i,msg in enumerate(liste):
@@ -87,7 +89,7 @@ def classify_attachments(liste):
     for i in indexes:
         for ii,attachment in enumerate(liste[i].attachments):
             if attachment['__typename'] not in classified.keys():
-                classified.update({attachment['__typename']:[(i,ii)]}) #we put two indexes, i and ii in the dictionnary, because i corresponds to the position in the list, and ii to the position of the attachment in the message
+                classified[attachment['__typename']] = [(i,ii)]#we put two indexes, i and ii in the dictionnary, because i corresponds to the position in the list, and ii to the position of the attachment in the message
             else:
                 classified[attachment['__typename']].append((i,ii))
     return classified
@@ -103,7 +105,8 @@ def write_datetime_from_timestamp(liste, utc = False):
 def printMsg(liste, personnes): #print the messeges in a list of message objects
     #personnes = {} #dictionnary with the persons in the chat
     for i in liste:
-        print(personnes[i.author] + ": " + i.text)
+        if i.text != None:
+            print(personnes[i.author] + ": " + i.text)
 
 
 def save_text_datetime_csv(liste, namefile):
@@ -114,6 +117,32 @@ def save_text_datetime_csv(liste, namefile):
             if msg.text != '' and msg.text != None:
                 csv_writer.writerow([msg.datetime,msg.author,msg.text,msg.uid])
 
+#use: (yes it's not not correctly yet):
+# list_of_messages=scrape_Messages(your_args)
+# save_msg_json(list_of_messages, 'data.json')
+def save_msg_json(liste, namefile):
+    def handle_message(liste):
+        for i in liste[::-1]:
+            i.datetime = str(i.datetime)
+            yield i
+    with open(namefile, 'w') as f:
+        for i in handle_message(liste):
+            json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
+
+
+
+        
+def save_msg_json_dev(liste, namefile, values_to_save):
+    def handle_message(liste): #todo: vérifier si c'est bien nécessaire de préciser liste comme paramètre
+        #faire un benchmark b[::-1] vs b[:].reverse()
+        #implementer values to save
+        for i in liste[::-1]:
+            i.datetime = str(i.datetime)
+            yield i
+    with open(namefile, 'w') as f:
+        for i in handle_message(liste):
+            json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
+    
 def save_msg_csv(liste, namefile, values_to_save):
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
         csv_writer = csv.writer(pfile)
@@ -156,7 +185,7 @@ def write_name_from_id(client, liste):
     id_to_name = {}
     for i in liste:
         if i.author not in id_to_name.keys(): #a bit of dynamic programming, otherwise it takes ages
-            id_to_name.update({i.author:get_name_from_id(client,i.author)})
+            id_to_name[i.author] = get_name_from_id(client,i.author)
         i.author_name = id_to_name[i.author]
     return id_to_name #originally, it isn't the purpose of the function to return the dictionnary, but why waste it? 
             
@@ -173,7 +202,7 @@ def test4():
 #actually convo type is useless here, ignore the above comment
 #client should be the Client object we just created
 #and "thread_id" the ID of the thread you're interested in
-def getMessageList(client, thread_id):
+def getMessageList(client, thread_id, verbose=1):
     
     print("Scraping the message list...")
 
@@ -188,9 +217,13 @@ def getMessageList(client, thread_id):
 
     while True:
         
-        print(str(count*10000) + "th message in " + str(time.time() - start_time)[:-13] + "s" + "\t| " + str(sys.getsizeof(msg_list)) + " B" + "\t increase: " + str(sys.getsizeof(msg_list)-cur_size) + "\t length: " + str(len(msg_list)) + "\t delay: " + str(time.time()-cur_time)[:-13] + "s")
-        cur_time = time.time()
-        cur_size = sys.getsizeof(msg_list)
+        if verbose == 2:
+            print(str(count*10000) + "th message in " + str(time.time() - start_time)[:-13] + "s" + "\t| " + str(sys.getsizeof(msg_list)) + " B" + "\t increase: " + str(sys.getsizeof(msg_list)-cur_size) + "\t length: " + str(len(msg_list)) + "\t delay: " + str(time.time()-cur_time)[:-13] + "s")
+            cur_time = time.time()
+            cur_size = sys.getsizeof(msg_list)
+        elif verbose == 1:
+            print(str(count*10000) + "th message loaded")
+        
         #print("Size of the array: " + str(sys.getsizeof(msg_list)) + " bytes")
         messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp)
         #messages = np.array(client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp))
@@ -208,7 +241,7 @@ def getMessageList(client, thread_id):
     
     return msg_list
 
-def scrapeMessages(address='', password='', thread_id='', is_group = False):
+def scrapeMessages(address='', password='', thread_id='', readable_time=True, readable_name=True, verbose=1):
     
     while not address:
         address = input("Please enter your email adress:")
@@ -246,10 +279,12 @@ def scrapeMessages(address='', password='', thread_id='', is_group = False):
     else:
         thread_type = ThreadType.USER"""
         
-    messageList = getMessageList(client, thread_id)
+    messageList = getMessageList(client, thread_id, verbose)
     
-    write_datetime_from_timestamp(messageList)
-    write_name_from_id(client,messageList)
+    if readable_time:
+        write_datetime_from_timestamp(messageList)
+    if readable_name:
+        write_name_from_id(client,messageList)
     
     client.logout()
     
