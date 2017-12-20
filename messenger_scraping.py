@@ -66,21 +66,6 @@ def get_attachment_index(liste): #returns a list with the indexes of all objects
             attached = attached + [i]
     return attached
 
-def test(liste):
-    indexes = get_attachment_index(liste)
-    for i in indexes:
-        try:
-            print(i,liste[i].attachments[0]['large_preview']['uri'])
-        except:
-            print(i)
-            break
-        
-def test2(dict):
-    for i in list(dict.values())[0]:
-        #print(i)
-        if i[1] != 0:
-            print(i)
-
 #returns a dictionnary classifying the indexes of the list according to what kind of attachment do they have
 #maybe i should allow for entering the indexes list as an argument
 def classify_attachments(liste):
@@ -101,6 +86,18 @@ def write_datetime_from_timestamp(liste, utc = False):
     else:
         for msg in liste:
             msg.datetime = datetime.datetime.utcfromtimestamp(int(msg.timestamp[:-3]))
+            
+def get_name_from_id(client,ID):
+   return client.fetchUserInfo(ID)[ID].name
+
+def write_name_from_id(client, liste):
+    id_to_name = {}
+    for i in liste:
+        if i.author not in id_to_name.keys(): #a bit of dynamic programming, otherwise it takes ages
+            id_to_name[i.author] = get_name_from_id(client,i.author)
+        i.author_name = id_to_name[i.author]
+    return id_to_name #originally, it isn't the purpose of the function to return the dictionnary, but why waste it? 
+
 
 def printMsg(liste, personnes): #print the messeges in a list of message objects
     #personnes = {} #dictionnary with the persons in the chat
@@ -108,40 +105,45 @@ def printMsg(liste, personnes): #print the messeges in a list of message objects
         if i.text != None:
             print(personnes[i.author] + ": " + i.text)
 
-
-def save_text_datetime_csv(liste, namefile):
-    with open(namefile, "w", newline='',encoding='utf-8') as pfile:
-        csv_writer = csv.writer(pfile)
-        csv_writer.writerow(["Date","Author","Text","MessageID"])
-        for msg in liste[::-1]:
-            if msg.text != '' and msg.text != None:
-                csv_writer.writerow([msg.datetime,msg.author,msg.text,msg.uid])
-
-#use: (yes it's not not correctly yet):
+#use: (yes it's not documented correctly yet):
 # list_of_messages=scrape_Messages(your_args)
 # save_msg_json(list_of_messages, 'data.json')
+#https://stackoverflow.com/questions/24239613/memoryerror-using-json-dumps
 def save_msg_json(liste, namefile):
+    
     def handle_message(liste):
         for i in liste[::-1]:
             i.datetime = str(i.datetime)
             yield i
+            
     with open(namefile, 'w') as f:
-        for i in handle_message(liste):
+        f.write('[')
+        
+        for i in handle_message(liste[:-1]):
             json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
-
+            f.write(',')
+            
+        for i in handle_message(liste[-1:]):
+            json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
+            
+        f.write(']')
 
 
         
-def save_msg_json_dev(liste, namefile, values_to_save):
+def save_msg_json_dev(liste, namefile, values_to_save = 'all'):
     def handle_message(liste): #todo: vérifier si c'est bien nécessaire de préciser liste comme paramètre
         #faire un benchmark b[::-1] vs b[:].reverse()
         #implementer values to save
         for i in liste[::-1]:
+            result = {}
+            for value in values_to_save:
+                if value in i.__dict__.keys():
+                    pass
             i.datetime = str(i.datetime)
             yield i
     with open(namefile, 'w') as f:
         for i in handle_message(liste):
-            json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
+            json.dump(i, f,indent=4, separators=(',', ': '))
     
 def save_msg_csv(liste, namefile, values_to_save):
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
@@ -177,29 +179,8 @@ def save_msg_csv(liste, namefile, values_to_save):
             if msg.text != '' and msg.text != None:
                 #test(i)
                 csv_writer.writerow([value(msg) for value in lambda_values])
-               
-def get_name_from_id(client,ID):
-   return client.fetchUserInfo(ID)[ID].name
+              
 
-def write_name_from_id(client, liste):
-    id_to_name = {}
-    for i in liste:
-        if i.author not in id_to_name.keys(): #a bit of dynamic programming, otherwise it takes ages
-            id_to_name[i.author] = get_name_from_id(client,i.author)
-        i.author_name = id_to_name[i.author]
-    return id_to_name #originally, it isn't the purpose of the function to return the dictionnary, but why waste it? 
-            
-    
-def test4():
-
-    with open('output_file.csv', 'w', newline='', encoding='utf-8') as csv_file:
-        writer = csv.writer(csv_file, delimiter=';')
-        writer.writerow('ç♀8Çé@àæ«')
-        writer.writerow("ç♀8Çé@àæ«")
-
-#if scraping for a one-to-one chat then set thread_type = ThreadType.USER
-# for groups use ThreadType.GROUP
-#actually convo type is useless here, ignore the above comment
 #client should be the Client object we just created
 #and "thread_id" the ID of the thread you're interested in
 def getMessageList(client, thread_id, verbose=1):
