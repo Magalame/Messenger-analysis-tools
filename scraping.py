@@ -67,7 +67,6 @@ def get_attachment_index(liste): #returns a list with the indexes of all objects
     return attached
 
 #returns a dictionnary classifying the indexes of the list according to what kind of attachment do they have
-#maybe i should allow for entering the indexes list as an argument
 def classify_attachments(liste):
     indexes = get_attachment_index(liste)
     classified = {}
@@ -98,12 +97,92 @@ def write_name_from_id(client, liste):
         i.author_name = id_to_name[i.author]
     return id_to_name #originally, it isn't the purpose of the function to return the dictionnary, but why waste it? 
 
+#client should be the Client object we just created
+#and "thread_id" the ID of the thread you're interested in
+def getMessageList(client, thread_id, verbose=1):
+    
+    print("Scraping the message list...")
 
-def printMsg(liste, personnes): #print the messeges in a list of message objects
-    #personnes = {} #dictionnary with the persons in the chat
-    for i in liste:
-        if i.text != None:
-            print(personnes[i.author] + ": " + i.text)
+    #msg_list = []
+    count = 1
+    
+    cur_time = start_time = time.time()
+    cur_size = 0
+    messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000)
+    msg_list = messages
+
+    while True:
+        
+        if verbose == 2:
+            print(str(count*10000) + "th message in " + str(time.time() - start_time)[:-13] + "s" + "\t| " + str(sys.getsizeof(msg_list)) + " B" + "\t increase: " + str(sys.getsizeof(msg_list)-cur_size) + "\t length: " + str(len(msg_list)) + "\t delay: " + str(time.time()-cur_time)[:-13] + "s")
+            cur_time = time.time()
+            cur_size = sys.getsizeof(msg_list)
+        elif verbose == 1:
+            print(str(count*10000) + "th message loaded")
+        
+        messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp)
+
+        msg_list = msg_list + messages[1:]  #we remove the first one because of the way the fetchThread function works. We could use "before=int(messages[-1].timestamp)-1" and keep the first element for clarity's sake but it works as well without
+
+        count = count + 1
+
+    
+        if messages[0].uid == messages[-1].uid:#as we remove the first one, we do not double count the last list (which will have only one element)
+            break
+    print("All messages are loaded")
+    
+    return msg_list
+
+def scrapeMessages(address='', password='', thread_id='', readable_time=True, readable_name=True, verbose=1):
+    
+    while not address:
+        address = input("Please enter your email adress:")
+    
+    while not password:
+        if any('SPYDER' in name for name in os.environ) or "pythonw.exe" in sys.executable:
+            password = input("Please enter your password: ")
+        else:
+            password = getpass.getpass("Please enter your password: ")
+            
+    client = Client(address, password)
+            
+    if not thread_id:
+        choice = ""
+        
+        while choice.lower() != 'g' and choice.lower() != 'u':
+            choice = input("Do you want to scrape a group chat (\'g\') or a simple chat (\'u\')")
+        if choice.lower() == 'u':
+            #is_group = False
+            while choice.lower() != "y" and choice.lower() != "n":
+                choice = input("Do you want to print your friends list, with their ID? (Press \'y\' if you're not sure) [y/n]:")
+    
+            if choice.lower() == "y":
+                printFriends(client)
+        
+        if choice.lower() == 'g':
+            pass
+            #is_group = True
+            
+    while not thread_id:    
+        thread_id = input("Please enter the ID: ")
+        
+    """if is_group:#we keep it outside of the "if not thread_id:" condition because we also want it to work for parameters
+        thread_type = ThreadType.GROUP
+    else:
+        thread_type = ThreadType.USER"""
+        
+    messageList = getMessageList(client, thread_id, verbose)
+    
+    if readable_time:
+        write_datetime_from_timestamp(messageList)
+    if readable_name:
+        write_name_from_id(client,messageList)
+    
+    client.logout()
+    
+    return messageList
+
+
 
 #use: (yes it's not documented correctly yet):
 # list_of_messages=scrape_Messages(your_args)
@@ -180,96 +259,6 @@ def save_msg_csv(liste, namefile, values_to_save):
                 #test(i)
                 csv_writer.writerow([value(msg) for value in lambda_values])
               
-
-#client should be the Client object we just created
-#and "thread_id" the ID of the thread you're interested in
-def getMessageList(client, thread_id, verbose=1):
-    
-    print("Scraping the message list...")
-
-    #msg_list = []
-    count = 1
-    
-    cur_time = start_time = time.time()
-    cur_size = 0
-    messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000)
-    #messages = np.array(client.fetchThreadMessages(thread_id=thread_id, limit=10000))
-    msg_list = messages
-
-    while True:
-        
-        if verbose == 2:
-            print(str(count*10000) + "th message in " + str(time.time() - start_time)[:-13] + "s" + "\t| " + str(sys.getsizeof(msg_list)) + " B" + "\t increase: " + str(sys.getsizeof(msg_list)-cur_size) + "\t length: " + str(len(msg_list)) + "\t delay: " + str(time.time()-cur_time)[:-13] + "s")
-            cur_time = time.time()
-            cur_size = sys.getsizeof(msg_list)
-        elif verbose == 1:
-            print(str(count*10000) + "th message loaded")
-        
-        #print("Size of the array: " + str(sys.getsizeof(msg_list)) + " bytes")
-        messages = client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp)
-        #messages = np.array(client.fetchThreadMessages(thread_id=thread_id, limit=10000, before=messages[-1].timestamp))
-        #before_concat = time.time()
-        msg_list = msg_list + messages[1:]  #we remove the first one because of the way the fetchThread function works. We could use "before=int(messages[-1].timestamp)-1" and keep the first element for clarity's sake but it works as well without
-        #msg_list = np.concatenate([msg_list,messages])
-        #after_concat = time.time()
-        #print("Concat performance: " + str(after_concat-before_concat)[:-13] + "s")
-        count = count + 1
-        #print("Count: " + str(count))
-    
-        if messages[0].uid == messages[-1].uid:#as we remove the first one, we do not double count the last list (which will have only one element)
-            break
-    print("All messages are loaded")
-    
-    return msg_list
-
-def scrapeMessages(address='', password='', thread_id='', readable_time=True, readable_name=True, verbose=1):
-    
-    while not address:
-        address = input("Please enter your email adress:")
-    
-    while not password:
-        if any('SPYDER' in name for name in os.environ) or "pythonw.exe" in sys.executable:
-            password = input("Please enter your password: ")
-        else:
-            password = getpass.getpass("Please enter your password: ")
-            
-    client = Client(address, password)
-            
-    if not thread_id:
-        choice = ""
-        
-        while choice.lower() != 'g' and choice.lower() != 'u':
-            choice = input("Do you want to scrape a group chat (\'g\') or a simple chat (\'u\')")
-        if choice.lower() == 'u':
-            #is_group = False
-            while choice.lower() != "y" and choice.lower() != "n":
-                choice = input("Do you want to print your friends list, with their ID? (Press \'y\' if you're not sure) [y/n]:")
-    
-            if choice.lower() == "y":
-                printFriends(client)
-        
-        if choice.lower() == 'g':
-            pass
-            #is_group = True
-            
-    while not thread_id:    
-        thread_id = input("Please enter the ID: ")
-        
-    """if is_group:#we keep it outside of the "if not thread_id:" condition because we also want it to work for parameters
-        thread_type = ThreadType.GROUP
-    else:
-        thread_type = ThreadType.USER"""
-        
-    messageList = getMessageList(client, thread_id, verbose)
-    
-    if readable_time:
-        write_datetime_from_timestamp(messageList)
-    if readable_name:
-        write_name_from_id(client,messageList)
-    
-    client.logout()
-    
-    return messageList
 
 
 if __name__ == "__main__":
