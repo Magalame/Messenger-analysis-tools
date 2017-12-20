@@ -20,7 +20,11 @@ def load_messages(messages_path):
 
     elif messages_path.endswith('.json'):
         with open(messages_path, 'r') as fp:
-            messages = json.loads(messages_path)
+            messages_json = json.loads(messages_path)
+        messages = {}
+        for i, message in enumerate(message_json):
+            messages[i] = message
+        return messages
 
     else:
         raise IOError("Bad extension. Messages must be in a .csv or a .json format.")
