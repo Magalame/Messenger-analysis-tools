@@ -10,6 +10,7 @@ import time
 import datetime
 import csv
 import json
+import re
 #import numpy as np
 
 parser = argparse.ArgumentParser()
@@ -190,7 +191,7 @@ def scrapeMessages(address='', password='', thread_id='', readable_time=True, re
 #https://stackoverflow.com/questions/24239613/memoryerror-using-json-dumps
 def save_msg_json(liste, namefile):
     
-    def handle_message(liste):
+    def handle_message(liste): #using a generator to not 1) modify the list 2) not load a second time the entire lsit
         for i in liste[::-1]:
             i.datetime = str(i.datetime)
             yield i
@@ -210,48 +211,56 @@ def save_msg_json(liste, namefile):
 
         
 def save_msg_json_dev(liste, namefile, values_to_save = 'all'):
-    def handle_message(liste): #todo: vérifier si c'est bien nécessaire de préciser liste comme paramètre
-        #faire un benchmark b[::-1] vs b[:].reverse()
+    def handle_message(liste):
         #implementer values to save
         for i in liste[::-1]:
-            result = {}
-            for value in values_to_save:
-                if value in i.__dict__.keys():
-                    pass
             i.datetime = str(i.datetime)
             yield i
+            
     with open(namefile, 'w') as f:
-        for i in handle_message(liste):
-            json.dump(i, f,indent=4, separators=(',', ': '))
+        f.write('[')
+        
+        for i in handle_message(liste[:-1]):
+            json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
+            f.write(',')
+            
+        for i in handle_message(liste[-1:]):
+            json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
+            
+        f.write(']')
+
+def create_lambda_values_msg(fieldnames):
     
+    lambda_values = []
+    fieldnames_checked = []
+    
+    for field in fieldnames:
+        if field == "Date":
+            lambda_values.append(lambda msg:msg.datetime)
+            fieldnames_checked.append("Date")
+        elif field == "Author":
+            lambda_values.append(lambda msg:msg.author)
+            fieldnames_checked.append("Author")
+        elif field == "Text":
+            lambda_values.append(lambda msg:msg.text)
+            fieldnames_checked.append("Text")
+        elif field == "MessageID":
+            lambda_values.append(lambda msg:msg.uid)
+            fieldnames_checked.append("MessageID")
+        elif field == "AuthorName":
+            lambda_values.append(lambda msg:msg.author_name)
+            fieldnames_checked.append("AuthorName")
+        elif field == "Timestamp":
+            lambda_values.append(lambda msg:msg.timestamp)
+            fieldnames_checked.append("Timestamp")
+            
+    return lambda_values, fieldnames_checked
+            
 def save_msg_csv(liste, namefile, values_to_save):
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
         csv_writer = csv.writer(pfile)
         
-        lambda_values = []
-        values_to_save_checked = [] #because the user might enter some values that aren't covered here
-        
-        #could be replaced with a generator, although calling the generator at every csv.writer loop would probably be less efficient
-        for i in values_to_save:
-            if i == "Date":
-                lambda_values.append(lambda _in:_in.datetime)
-                values_to_save_checked.append("Date")
-            elif i == "Author":
-                lambda_values.append(lambda _in:_in.author)
-                values_to_save_checked.append("Author")
-            elif i == "Text":
-                lambda_values.append(lambda _in:_in.text)
-                values_to_save_checked.append("Text")
-            elif i == "MessageID":
-                lambda_values.append(lambda _in:_in.uid)
-                values_to_save_checked.append("MessageID")
-            elif i == "AuthorName":
-                lambda_values.append(lambda _in:_in.author_name)
-                values_to_save_checked.append("AuthorName")
-            elif i == "Timestamp":
-                lambda_values.append(lambda _in:_in.timestamp)
-                values_to_save_checked.append("Timestamp")
-        
+        lambda_values, values_to_save_checked = create_lambda_values_msg(values_to_save)
         #test = lambda _in: csv_writer.writerow([_in.datetime,_in.author,_in.text,_in.uid])
         csv_writer.writerow(values_to_save_checked)
         for msg in liste[::-1]:
@@ -259,7 +268,42 @@ def save_msg_csv(liste, namefile, values_to_save):
                 #test(i)
                 csv_writer.writerow([value(msg) for value in lambda_values])
               
-
+def regex_command_text(liste, pattern):
+    result_list = []
+    
+    try:
+        compiled_pattern = re.compile(pattern) #faster using compile
+    except Exception as e:
+        if str(e) == 'nothing to repeat':
+            raise ValueError("\'Nothing to repeat\' error from regex. If you happen to use \'*\' in your expression remember it is interpreted here as a a quantifier. It means it will multiply everything that is before it. See https://stackoverflow.com/questions/31386552/nothing-to-repeat-from-python-regex")
+        
+    for i in liste:
+        if i.text != None:
+            if compiled_pattern.search(i.text):
+                result_list.append(i)
+    
+    return result_list
+            
+def regex_command(liste, pattern, fieldnames = ['Text']):
+    result_list = []
+    lambda_values = []
+    
+    try:
+        compiled_pattern = re.compile(pattern) #faster using compile
+    except Exception as e:
+        if str(e) == 'nothing to repeat':
+            raise ValueError("\'Nothing to repeat\' error from regex. If you happen to use \'*\' in your expression remember it is interpreted here as a a quantifier. It means it will multiply everything that is before it. See https://stackoverflow.com/questions/31386552/nothing-to-repeat-from-python-regex")
+     
+    lambda_values = create_lambda_values_msg(fieldnames)[0]
+    
+    for msg in liste:
+        for value in lambda_values:
+            if value(msg):
+                if compiled_pattern.search(value(msg)):
+                    result_list.append(msg)
+                    break
+    
+    return result_list
 
 if __name__ == "__main__":
     if args.address and args.password:
