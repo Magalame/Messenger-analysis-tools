@@ -11,6 +11,7 @@ import datetime
 import csv
 import json
 import re
+import urllib.request
 #import numpy as np
 
 parser = argparse.ArgumentParser()
@@ -84,9 +85,11 @@ def get_attachment_indexes(liste): #returns a list with the indexes of all objec
     return attached
 
 #returns a dictionnary classifying the indexes of the list according to what kind of attachment do they have
-def classify_attachments(liste):
+def classify_attachments(liste, indexes=-1):
     
-    indexes = get_attachment_indexes(liste)
+    if indexes == -1:
+        indexes = get_attachment_indexes(liste)
+        
     classified = {}
     
     for i in indexes:
@@ -102,6 +105,24 @@ def classify_attachments(liste):
                 classified[attachment['__typename']].append((i,ii))
                 
     return classified
+
+def get_image_filename(liste, i, ii):
+    return liste[i].attachments[ii]['filename']
+
+def get_image_url(liste, i, ii):
+    return liste[i].attachments[ii]['large_preview']['uri']
+
+def download_attachments(liste):
+    
+    indexes = classify_attachments(liste)
+    
+    for i in indexes['MessageImage']:
+        url = liste[i[0]].attachments[i[1]]['large_preview']['uri']
+        filename = liste[i[0]].attachments[i[1]]['filename']
+        extension = url.split('?')[0][-3:]
+        print(filename, url)
+        urllib.request.urlretrieve(url, filename + extension)
+        
 
 def write_datetime_from_timestamp(liste, utc = False):
     
@@ -203,7 +224,7 @@ def getMessageList(client, thread_id, verbose=1, messages_before=-1, messages_af
     
     return msg_list
 
-def scrapeMessages(address='', password='', thread_id='', readable_time=True, readable_name=True, verbose=1):
+def scrapeMessages(address, password, thread_id, readable_time=True, readable_name=True, verbose=1,messages_before=-1, messages_after=-1, upper_bound=-1):
     
     while not address:
         address = input("Please enter your email adress:")
@@ -241,7 +262,7 @@ def scrapeMessages(address='', password='', thread_id='', readable_time=True, re
     else:
         thread_type = ThreadType.USER"""
         
-    messageList = getMessageList(client, thread_id, verbose)
+    messageList = getMessageList(client, thread_id, verbose, messages_before, messages_after, upper_bound)
     
     if readable_time:
         write_datetime_from_timestamp(messageList)
@@ -252,7 +273,32 @@ def scrapeMessages(address='', password='', thread_id='', readable_time=True, re
     
     return messageList
 
-
+def create_lambda_values_msg(fieldnames):
+    
+    lambda_values = []
+    fieldnames_checked = []
+    
+    for field in fieldnames:
+        if field == "Datetime":
+            lambda_values.append(lambda msg:str(msg.datetime))
+            fieldnames_checked.append("Datetime")
+        elif field == "Author":
+            lambda_values.append(lambda msg:msg.author)
+            fieldnames_checked.append("Author")
+        elif field == "Text":
+            lambda_values.append(lambda msg:msg.text)
+            fieldnames_checked.append("Text")
+        elif field == "MessageID":
+            lambda_values.append(lambda msg:msg.uid)
+            fieldnames_checked.append("MessageID")
+        elif field == "AuthorName":
+            lambda_values.append(lambda msg:msg.author_name)
+            fieldnames_checked.append("AuthorName")
+        elif field == "Timestamp":
+            lambda_values.append(lambda msg:msg.timestamp)
+            fieldnames_checked.append("Timestamp")
+            
+    return lambda_values, fieldnames_checked
 
 #use: (yes it's not documented correctly yet):
 # list_of_messages=scrape_Messages(your_args)
@@ -262,7 +308,9 @@ def save_msg_json(liste, namefile):
     
     def handle_message(liste): #using a generator to not 1) modify the list 2) not load a second time the entire lsit
         for i in liste[::-1]:
-            i.datetime = str(i.datetime)
+            
+            if 'datetime' in i.__dict__.keys():
+                i.datetime = str(i.datetime)
             yield i
             
     with open(namefile, 'w') as f:
@@ -298,32 +346,9 @@ def save_msg_json_dev(liste, namefile, values_to_save = 'all'):
             
         f.write(']')
 
-def create_lambda_values_msg(fieldnames):
-    
-    lambda_values = []
-    fieldnames_checked = []
-    
-    for field in fieldnames:
-        if field == "Datetime":
-            lambda_values.append(lambda msg:str(msg.datetime))
-            fieldnames_checked.append("Datetime")
-        elif field == "Author":
-            lambda_values.append(lambda msg:msg.author)
-            fieldnames_checked.append("Author")
-        elif field == "Text":
-            lambda_values.append(lambda msg:msg.text)
-            fieldnames_checked.append("Text")
-        elif field == "MessageID":
-            lambda_values.append(lambda msg:msg.uid)
-            fieldnames_checked.append("MessageID")
-        elif field == "AuthorName":
-            lambda_values.append(lambda msg:msg.author_name)
-            fieldnames_checked.append("AuthorName")
-        elif field == "Timestamp":
-            lambda_values.append(lambda msg:msg.timestamp)
-            fieldnames_checked.append("Timestamp")
-            
-    return lambda_values, fieldnames_checked
+def load_json(path):
+    with open(path, 'r') as fp:
+        return json.load(fp)
             
 def save_msg_csv(liste, namefile, values_to_save = ["Datetime","AuthorName","Text","MessageID"]):
     
