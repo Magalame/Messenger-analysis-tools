@@ -15,6 +15,8 @@ def load_messages(messages_path):
                 values = {}
                 for j, header in enumerate(headers):
                     values[header] = row[j]
+                    if header == 'Attachments':
+                        values[header] = format_attachment(values[header])
                 messages[i] = values
             return messages
 
@@ -33,3 +35,6 @@ def format_date(input_date):
     date = input_date.split(" ")[0].split("-")
     date = datetime.date(int(date[0]), int(date[1]), int(date[2]))
     return date
+
+def format_attachment(input_string):
+    return json.loads(input_string.replace('\'','"').replace('None','null').replace("False","false").replace("True","true"))

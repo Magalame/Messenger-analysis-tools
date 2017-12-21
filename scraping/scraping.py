@@ -63,7 +63,7 @@ def check_for_time(liste):
         
         if int(liste[i].timestamp) > int(liste[i-1].timestamp): #assuming that the lastest message is at index 0
             
-            raise ValueError("Time discontinuity at index " + str(i) + " in the list")
+            raise ValueError("Time discontinuity at index " + str(i) + "in the list")
 
 def get_attachment_indexes(liste): #returns a list with the indexes of all objects having an attachment
     
@@ -100,9 +100,10 @@ def classify_attachments(liste, indexes=-1):
     return classified
 
 
-def download_attachments(liste):
+def download_attachments(liste, indexes = -1):
     
-    indexes = classify_attachments(liste)
+    if indexes == -1:
+        indexes = classify_attachments(liste)
     
     if 'MessageImage' in indexes.keys():
         for i in indexes['MessageImage']:
@@ -354,6 +355,21 @@ def create_lambda_values_msg(fieldnames):
         elif field == "Timestamp":
             lambda_values.append(lambda msg:msg.timestamp)
             fieldnames_checked.append("Timestamp")
+        elif field == "Is read":
+            lambda_values.append(lambda msg:msg.is_read)
+            fieldnames_checked.append("IsRead")
+        elif field == "Extensible attachment":
+            lambda_values.append(lambda msg:msg.extensible_attachment)
+            fieldnames_checked.append("ExtensibleAttachment")
+        elif field == "Attachments":
+            lambda_values.append(lambda msg:msg.attachments)
+            fieldnames_checked.append("Attachments")
+        elif field == "Mentions":
+            lambda_values.append(lambda msg:msg.mentions)
+            fieldnames_checked.append("Mentions")
+        elif field == "Reactions":
+            lambda_values.append(lambda msg:msg.reactions)
+            fieldnames_checked.append("Reactions")
             
     return lambda_values, fieldnames_checked
 
@@ -369,37 +385,54 @@ def save_msg_json(liste, namefile):
             if 'datetime' in i.__dict__.keys():
                 i.datetime = str(i.datetime)
             yield i
-            
+    
     with open(namefile, 'w') as f:
         f.write('[')
         
-        for i in handle_message(liste[:-1]):
-            json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
+        for msg in handle_message(liste[:-1]):
+            json.dump(msg.__dict__, f,indent=4, separators=(',', ': '))
             f.write(',')
             
-        for i in handle_message(liste[-1:]): #we put the last element in each own loop too be able to control for the last comma to write
-            json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
+        for msg in handle_message(liste[-1:]): #we put the last element in each own loop too be able to control for the last comma to write
+            json.dump(msg.__dict__, f,indent=4, separators=(',', ': '))
             
         f.write(']')
 
-
+def build_attachment_list(liste):
+    indexes = get_attachment_indexes(liste)
+    result = []
+    for i in indexes:
+        result.append(liste[i])
+    return result
         
-def save_msg_json_dev(liste, namefile, values_to_save = 'all'):
+def save_msg_json_dev(liste, namefile, fieldnames = ['Attachments','Author','AuthorName','Datetime','ExtensibleAttachment','IsRead','Mentions','Reactions','Sticker','Text','Timestamp','MessageID']):
     def handle_message(liste):
         #implementer values to save
         for i in liste[::-1]:
             i.datetime = str(i.datetime)
             yield i
             
+    def build_dict(msg, lambda_values):
+        
+        out = {}
+            
+        for index,value in enumerate(lambda_values):
+            out[fields_checked[index]] = value(msg)
+            
+        return out
+    
+    lambda_values, fields_checked = create_lambda_values_msg(fieldnames)
+    
     with open(namefile, 'w') as f:
         f.write('[')
         
-        for i in handle_message(liste[:-1]):
-            json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
+        for msg in handle_message(liste[:-1]):
+            #print(msg.__dict__)
+            json.dump(build_dict(msg, lambda_values), f,indent=4, separators=(',', ': '))
             f.write(',')
             
-        for i in handle_message(liste[-1:]):
-            json.dump(i.__dict__, f,indent=4, separators=(',', ': '))
+        for msg in handle_message(liste[-1:]):
+            json.dump(build_dict(msg, lambda_values), f,indent=4, separators=(',', ': '))
             
         f.write(']')
 
@@ -418,8 +451,9 @@ def save_msg_csv(liste, namefile, values_to_save = ["Datetime","AuthorName","Tex
         csv_writer.writerow(values_to_save_checked)
         
         for msg in liste[::-1]:
-            if msg.text != '' and msg.text != None:
+            if msg.text != '' and msg.text != None or True:
                 #test(i)
+                print(msg)
                 csv_writer.writerow([value(msg) for value in lambda_values])
               
 def regex_command_text(liste, pattern):
