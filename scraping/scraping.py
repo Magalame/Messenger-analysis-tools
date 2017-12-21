@@ -51,13 +51,10 @@ def check_for_duplication(liste): #https://stackoverflow.com/questions/1541797/c
       
     if msg.uid in seen: 
         
-        print("Duplication at " + str(i))
-        
-        return True
+        raise ValueError("Duplication at index " + str(i) + " in the list")
     
     seen.add(msg.uid)
     
-  return False
 
 #checks that there is no time discontinuity in the list
 def check_for_time(liste): 
@@ -66,11 +63,7 @@ def check_for_time(liste):
         
         if int(liste[i].timestamp) > int(liste[i-1].timestamp): #assuming that the lastest message is at index 0
             
-            print("Fails at index " + str(i))
-            
-            return False
-        
-    return True
+            raise ValueError("Time discontinuity at index " + str(i) + " in the list")
 
 def get_attachment_indexes(liste): #returns a list with the indexes of all objects having an attachment
     
@@ -106,23 +99,87 @@ def classify_attachments(liste, indexes=-1):
                 
     return classified
 
-def get_image_filename(liste, i, ii):
-    return liste[i].attachments[ii]['filename']
-
-def get_image_url(liste, i, ii):
-    return liste[i].attachments[ii]['large_preview']['uri']
 
 def download_attachments(liste):
     
     indexes = classify_attachments(liste)
     
-    for i in indexes['MessageImage']:
-        url = liste[i[0]].attachments[i[1]]['large_preview']['uri']
-        filename = liste[i[0]].attachments[i[1]]['filename']
-        extension = url.split('?')[0][-3:]
-        print(filename, url)
-        urllib.request.urlretrieve(url, filename + extension)
+    if 'MessageImage' in indexes.keys():
+        for i in indexes['MessageImage']:
         
+            attachment = liste[i[0]].attachments[i[1]]
+            url = attachment['large_preview']['uri']
+            filename = attachment['filename']
+            extension = url.split('?')[0][-4:]
+        
+            print(filename + extension)
+        
+            urllib.request.urlretrieve(url, filename + extension)
+    
+        print("------------------------------------")
+
+    if 'MessageAudio' in indexes.keys():
+        for i in indexes['MessageAudio']:
+        
+            attachment = liste[i[0]].attachments[i[1]]
+            url = attachment['playable_url']
+            filename = attachment['filename']
+            extension = url.split('?')[0][-4:]
+            if extension == '.jpg':
+                extension = '.mp3'
+            elif extension == '.mp4':
+                filename = filename[:-4]
+                extension = '.mp3'
+        
+            print(filename + extension)
+         
+            urllib.request.urlretrieve(url, filename + extension)
+        
+        print("------------------------------------")
+
+    if 'MessageAnimatedImage' in indexes.keys():
+        for i in indexes['MessageAnimatedImage']:
+        
+            attachment = liste[i[0]].attachments[i[1]]
+            url = attachment['animated_image']['uri']
+            filename = attachment['filename']
+             #extension = url.split('?')[0][-4:]
+        
+            print(filename + '.gif')
+        
+            urllib.request.urlretrieve(url, filename + '.gif')
+            
+        print("------------------------------------")
+
+    if 'MessageFile' in indexes.keys():
+        for i in indexes['MessageFile']:
+        
+            attachment = liste[i[0]].attachments[i[1]]
+            url = attachment['url']
+            filename = attachment['filename']
+        
+            print(filename)
+        
+            f = urllib.request.urlopen(url)
+            out = f.read().decode('utf-8') #codes the bytes
+            out2 = out.split('&u=')[-1].split('\"')[0] #we parse the string 
+            out3 = out2[:-1].encode('utf8').decode('unicode-escape').encode('utf8').decode('unicode-escape') #we remove the unicode escaping
+            out4 = urllib.request.unquote(out3) #removes the url escaping
+        
+            urllib.request.urlretrieve(out4, filename)
+        #print(filename, url_is_alive(out4))
+        print("------------------------------------")
+    
+    if 'MessageVideo' in indexes.keys():
+        for i in indexes['MessageVideo']:
+        
+            attachment = liste[i[0]].attachments[i[1]]
+            url = attachment['playable_url']
+            filename = attachment['filename']
+        
+            print(filename)
+        
+            urllib.request.urlretrieve(url, filename) 
 
 def write_datetime_from_timestamp(liste, utc = False):
     
