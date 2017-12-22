@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-from fbchat import Client
+import fbchat
 from fbchat.models import *
 import getpass
 import os
@@ -22,6 +22,9 @@ parser.add_argument('-a','--email_address', action="store", dest="address", help
 args = parser.parse_args()
 
 def printFriends(client): #prints friend list with IDs
+    
+    check_for_client(client)
+    
     def getKey(user):
         return user.name
 
@@ -40,14 +43,30 @@ def printFriends(client): #prints friend list with IDs
             a = 0
         if user.uid != "0" and user.uid != 0:
             print(user.name,a*"\t",user.uid)
+            
+def check_for_list(liste):
+    if type(liste) != list:
+        raise TypeError("The argument should be of type list")
+
+def check_for_msg(item):
+    if type(item) != fbchat.models.Message:
+        raise TypeError("The item should of type fbchat.models.Message")
+        
+def check_for_client(instance):
+    if type(instance) != fbchat.client.Client:
+        raise TypeError("The parameter should be a fbchat.client object")
 
 #checks that we haven't double-included a message in a list
 #maybe replace "true" by an exception
 def check_for_duplication(liste): #https://stackoverflow.com/questions/1541797/check-for-duplicates-in-a-flat-list
-    
+
+  check_for_list(liste)
+
   seen = set()
   
   for i,msg in enumerate(liste):
+    
+    check_for_msg(msg)
       
     if msg.uid in seen: 
         
@@ -59,7 +78,13 @@ def check_for_duplication(liste): #https://stackoverflow.com/questions/1541797/c
 #checks that there is no time discontinuity in the list
 def check_for_time(liste): 
     
+    check_for_list(liste)
+    
+    check_for_msg(liste[0])
+    
     for i in range(1,len(liste)):
+        
+        check_for_msg(liste[i])
         
         if int(liste[i].timestamp) > int(liste[i-1].timestamp): #assuming that the lastest message is at index 0
             
@@ -67,9 +92,13 @@ def check_for_time(liste):
 
 def get_attachment_indexes(liste): #returns a list with the indexes of all objects having an attachment
     
+    check_for_list(liste)
+    
     attached = []
     
     for i,msg in enumerate(liste):
+        
+        check_for_msg(msg)
         
         if msg.attachments != [] and msg.attachments != None:
             
@@ -80,12 +109,18 @@ def get_attachment_indexes(liste): #returns a list with the indexes of all objec
 #returns a dictionnary classifying the indexes of the list according to what kind of attachment do they have
 def classify_attachments(liste, indexes=-1):
     
+    check_for_list(liste)
+    
     if indexes == -1:
         indexes = get_attachment_indexes(liste)
-        
+    else:
+        check_for_list(indexes)
+    
     classified = {}
     
     for i in indexes:
+        
+        check_for_msg(liste[i])
         
         for ii,attachment in enumerate(liste[i].attachments):
             
@@ -102,11 +137,17 @@ def classify_attachments(liste, indexes=-1):
 
 def download_attachments(liste, indexes = -1):
     
+    check_for_list(liste)
+    
     if indexes == -1:
         indexes = classify_attachments(liste)
     
+    check_for_list(indexes)
+    
     if 'MessageImage' in indexes.keys():
         for i in indexes['MessageImage']:
+            
+            check_for_msg(liste[i[0]])
         
             attachment = liste[i[0]].attachments[i[1]]
             url = attachment['large_preview']['uri']
@@ -122,6 +163,8 @@ def download_attachments(liste, indexes = -1):
     if 'MessageAudio' in indexes.keys():
         for i in indexes['MessageAudio']:
         
+            check_for_msg(liste[i[0]])
+            
             attachment = liste[i[0]].attachments[i[1]]
             url = attachment['playable_url']
             filename = attachment['filename']
@@ -140,6 +183,8 @@ def download_attachments(liste, indexes = -1):
 
     if 'MessageAnimatedImage' in indexes.keys():
         for i in indexes['MessageAnimatedImage']:
+            
+            check_for_msg(liste[i[0]])
         
             attachment = liste[i[0]].attachments[i[1]]
             url = attachment['animated_image']['uri']
@@ -154,6 +199,8 @@ def download_attachments(liste, indexes = -1):
 
     if 'MessageFile' in indexes.keys():
         for i in indexes['MessageFile']:
+            
+            check_for_msg(liste[i[0]])
         
             attachment = liste[i[0]].attachments[i[1]]
             url = attachment['url']
@@ -173,6 +220,8 @@ def download_attachments(liste, indexes = -1):
     
     if 'MessageVideo' in indexes.keys():
         for i in indexes['MessageVideo']:
+            
+            check_for_msg(liste[i[0]])
         
             attachment = liste[i[0]].attachments[i[1]]
             url = attachment['playable_url']
@@ -184,9 +233,16 @@ def download_attachments(liste, indexes = -1):
 
 def write_datetime_from_timestamp(liste, utc = False):
     
+    check_for_list(liste)
+    
+    if type(utc) != bool:
+        raise TypeError("utc should be of type bool")
+    
     if not utc:
         
         for msg in liste:
+            
+            check_for_msg(msg)
             
             msg.datetime = datetime.datetime.fromtimestamp(int(msg.timestamp[:-3])) #we stripe the last 3 digits because python doesn't handle it
 
@@ -194,33 +250,58 @@ def write_datetime_from_timestamp(liste, utc = False):
         
         for msg in liste:
             
+            check_for_msg(msg)
+            
             msg.datetime = datetime.datetime.utcfromtimestamp(int(msg.timestamp[:-3]))
             
 def get_name_from_id(client,ID):
+   check_for_client(client)
    return client.fetchUserInfo(ID)[ID].name
 
 def write_name_from_id(client, liste):
     
+    check_for_client(client)
+    
+    check_for_list(liste)
+    
     id_to_name = {}
     
-    for i in liste:
-        if i.author not in id_to_name.keys(): #a bit of dynamic programming, otherwise it takes ages
+    for msg in liste:
+        
+        check_for_msg(msg)
+        
+        if msg.author not in id_to_name.keys(): #a bit of dynamic programming, otherwise it takes ages
 
-            id_to_name[i.author] = get_name_from_id(client,i.author)
+            id_to_name[msg.author] = get_name_from_id(client,msg.author)
 
-        i.author_name = id_to_name[i.author]
+        msg.author_name = id_to_name[msg.author]
 
     return id_to_name #originally, it isn't the purpose of the function to return the dictionnary, but why waste it? 
 
 def remove_timestamp_overhead(liste,timestamp):
     
+    check_for_list(liste)
+    
+    if type(timestamp) != int:
+        raise TypeError("timestamp should be of type int")
+        
+    
     print('Removing timestamp overhead...')
+    
+    check_for_msg(liste[-1])
     
     while int(liste[-1].timestamp) < timestamp:
         
         liste.pop()
         
+        check_for_msg(liste[-1])
+        
 def remove_counter_overhead(liste,upper_bound):
+    
+    check_for_list(liste)
+    
+    if type(upper_bound) != int:
+        raise TypeError("upper_bound should be of type int")
     
     print('Removing counter overhead...')
     
@@ -232,6 +313,10 @@ def remove_counter_overhead(liste,upper_bound):
 #and "thread_id" the ID of the thread you're interested in
 #messages_before should be a int representing a unix timestamp
 def getMessageList(client, thread_id, verbose=1, messages_before=-1, messages_after=-1, upper_bound=-1):
+    
+    check_for_client(client)
+    
+    
     
     print("Scraping the message list...")
 
@@ -293,7 +378,7 @@ def scrapeMessages(address, password, thread_id, readable_time=True, readable_na
         else:
             password = getpass.getpass("Please enter your password: ")
             
-    client = Client(address, password)
+    client = fbchat.Client(address, password)
             
     if not thread_id:
         choice = ""
@@ -331,14 +416,17 @@ def scrapeMessages(address, password, thread_id, readable_time=True, readable_na
     
     return messageList
 
-def create_lambda_values_msg(fieldnames):
+def create_lambda_values_msg(fieldnames, attachments_as_string = False, datetime_as_string = True):
     
     lambda_values = []
     fieldnames_checked = []
     
     for field in fieldnames:
         if field == "Datetime":
-            lambda_values.append(lambda msg:str(msg.datetime))
+            if datetime_as_string == True:
+                lambda_values.append(lambda msg:str(msg.datetime))
+            else:
+                lambda_values.append(lambda msg:msg.datetime)
             fieldnames_checked.append("Datetime")
         elif field == "Author":
             lambda_values.append(lambda msg:msg.author)
@@ -362,7 +450,10 @@ def create_lambda_values_msg(fieldnames):
             lambda_values.append(lambda msg:msg.extensible_attachment)
             fieldnames_checked.append("ExtensibleAttachment")
         elif field == "Attachments":
-            lambda_values.append(lambda msg:msg.attachments)
+            if attachments_as_string == True:
+                lambda_values.append(lambda msg:str(msg.attachments))
+            else:
+                lambda_values.append(lambda msg:msg.attachments)
             fieldnames_checked.append("Attachments")
         elif field == "Mentions":
             lambda_values.append(lambda msg:msg.mentions)
@@ -373,31 +464,6 @@ def create_lambda_values_msg(fieldnames):
             
     return lambda_values, fieldnames_checked
 
-#use: (yes it's not documented correctly yet):
-# list_of_messages=scrape_Messages(your_args)
-# save_msg_json(list_of_messages, 'data.json')
-#https://stackoverflow.com/questions/24239613/memoryerror-using-json-dumps
-def save_msg_json(liste, namefile):
-    
-    def handle_message(liste): #using a generator to not 1) modify the list 2) not load a second time the entire lsit
-        for i in liste[::-1]:
-            
-            if 'datetime' in i.__dict__.keys():
-                i.datetime = str(i.datetime)
-            yield i
-    
-    with open(namefile, 'w') as f:
-        f.write('[')
-        
-        for msg in handle_message(liste[:-1]):
-            json.dump(msg.__dict__, f,indent=4, separators=(',', ': '))
-            f.write(',')
-            
-        for msg in handle_message(liste[-1:]): #we put the last element in each own loop too be able to control for the last comma to write
-            json.dump(msg.__dict__, f,indent=4, separators=(',', ': '))
-            
-        f.write(']')
-
 def build_attachment_list(liste):
     indexes = get_attachment_indexes(liste)
     result = []
@@ -405,7 +471,10 @@ def build_attachment_list(liste):
         result.append(liste[i])
     return result
         
-def save_msg_json_dev(liste, namefile, fieldnames = ['Attachments','Author','AuthorName','Datetime','ExtensibleAttachment','IsRead','Mentions','Reactions','Sticker','Text','Timestamp','MessageID']):
+
+os.path.isfile(fname) 
+
+def save_msg_json(liste, namefile, fieldnames = ['Attachments','Author','AuthorName','Datetime','ExtensibleAttachment','IsRead','Mentions','Reactions','Sticker','Text','Timestamp','MessageID']):
     def handle_message(liste):
         #implementer values to save
         for i in liste[::-1]:
@@ -420,6 +489,16 @@ def save_msg_json_dev(liste, namefile, fieldnames = ['Attachments','Author','Aut
             out[fields_checked[index]] = value(msg)
             
         return out
+    
+    check_for_list(liste)
+    
+    if os.path.isfile(namefile):
+        answer = ""
+        while answer.lower() != "y" or answer.lower() != "n":
+            answer = input(namefile + " already exist, do you want to overwrite it?")
+    
+    if answer == "n":
+        return # we exit, as we cannot write 
     
     lambda_values, fields_checked = create_lambda_values_msg(fieldnames)
     
@@ -441,6 +520,15 @@ def load_json(path):
         return json.load(fp)
             
 def save_msg_csv(liste, namefile, values_to_save = ["Datetime","AuthorName","Text","MessageID"]):
+    
+    
+    if os.path.isfile(namefile):
+        answer = ""
+        while answer.lower() != "y" or answer.lower() != "n":
+            answer = input(namefile + " already exist, do you want to overwrite it?")
+    
+    if answer == "n":
+        return # we exit, as we cannot write 
     
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
         
@@ -482,15 +570,17 @@ def regex_command(liste, pattern, fieldnames = ['Text']):
         if str(e) == 'nothing to repeat':
             raise ValueError("\'Nothing to repeat\' error from regex. If you happen to use \'*\' in your expression remember it is interpreted here as a a quantifier. It means it will multiply everything that is before it. See https://stackoverflow.com/questions/31386552/nothing-to-repeat-from-python-regex")
      
-    lambda_values = create_lambda_values_msg(fieldnames)[0]
+    lambda_values = create_lambda_values_msg(fieldnames, attachments_as_string = True)[0]
     
     for msg in liste:
         for value in lambda_values:
             if value(msg):
-                if compiled_pattern.search(value(msg)):
-                    result_list.append(msg)
-                    break
-    
+                try:
+                    if compiled_pattern.search(value(msg)):
+                        result_list.append(msg)
+                        break
+                except TypeError:
+                    raise TypeError("The field you've entered contains a datatype that isn't supported, only strings and bytes-like objects are.")
     return result_list
 
 if __name__ == "__main__":
