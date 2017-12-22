@@ -21,7 +21,8 @@ parser.add_argument('-a','--email_address', action="store", dest="address", help
 
 args = parser.parse_args()
 
-def printFriends(client): #prints friend list with IDs
+def printFriends(client): 
+    """Prints th friend list from the 'client' argument"""
     
     check_for_client(client)
     
@@ -56,10 +57,12 @@ def check_for_client(instance):
     if type(instance) != fbchat.client.Client:
         raise TypeError("The parameter should be a fbchat.client object")
 
-#checks that we haven't double-included a message in a list
-#maybe replace "true" by an exception
 def check_for_duplication(liste): #https://stackoverflow.com/questions/1541797/check-for-duplicates-in-a-flat-list
 
+  """Checks that there is no two message objects having the same id from 'liste'. 
+  In short we check there is no duplicate"""
+
+    
   check_for_list(liste)
 
   seen = set()
@@ -75,8 +78,11 @@ def check_for_duplication(liste): #https://stackoverflow.com/questions/1541797/c
     seen.add(msg.uid)
     
 
-#checks that there is no time discontinuity in the list
+
 def check_for_time(liste): 
+    
+    """Checks that there is no time discontinuity, which means that it verifies that at no point the order
+    of the timestamps does not go backward"""
     
     check_for_list(liste)
     
@@ -90,7 +96,10 @@ def check_for_time(liste):
             
             raise ValueError("Time discontinuity at index " + str(i) + "in the list")
 
-def get_attachment_indexes(liste): #returns a list with the indexes of all objects having an attachment
+def get_attachment_indexes(liste): 
+    
+    """Returns an array with the index of the message objects in 'liste' that have an attachment. 
+    See build_attachment_list for returning a list of message object instead of a list of index"""
     
     check_for_list(liste)
     
@@ -106,8 +115,18 @@ def get_attachment_indexes(liste): #returns a list with the indexes of all objec
             
     return attached
 
-#returns a dictionnary classifying the indexes of the list according to what kind of attachment do they have
+def build_attachment_list(liste):
+    indexes = get_attachment_indexes(liste)
+    result = []
+    for i in indexes:
+        result.append(liste[i])
+    return result
+
 def classify_attachments(liste, indexes=-1):
+    
+    """Returns a dictionnary classifying the message objects or rather their index depending on the
+    kind of attachment they have"""
+
     
     check_for_list(liste)
     
@@ -136,6 +155,8 @@ def classify_attachments(liste, indexes=-1):
 
 
 def download_attachments(liste, indexes = -1):
+    
+    """Downloads all the attachments in the message objects in 'liste'"""
     
     check_for_list(liste)
     
@@ -233,6 +254,9 @@ def download_attachments(liste, indexes = -1):
 
 def write_datetime_from_timestamp(liste, utc = False):
     
+    """Converts timestamp to datetime for each message object in the list and writes it into said object"""
+    
+    
     check_for_list(liste)
     
     if type(utc) != bool:
@@ -260,6 +284,8 @@ def get_name_from_id(client,ID):
 
 def write_name_from_id(client, liste):
     
+    """Converts author id to name for each message object in the list and writes it into said object"""
+    
     check_for_client(client)
     
     check_for_list(liste)
@@ -280,6 +306,8 @@ def write_name_from_id(client, liste):
 
 def remove_timestamp_overhead(liste,timestamp):
     
+    """Removes all messages that have been exchanged at a sooner date that the one expressed by the timestamp"""
+    
     check_for_list(liste)
     
     if type(timestamp) != int:
@@ -298,6 +326,8 @@ def remove_timestamp_overhead(liste,timestamp):
         
 def remove_counter_overhead(liste,upper_bound):
     
+    
+    
     check_for_list(liste)
     
     if type(upper_bound) != int:
@@ -314,9 +344,9 @@ def remove_counter_overhead(liste,upper_bound):
 #messages_before should be a int representing a unix timestamp
 def getMessageList(client, thread_id, verbose=1, messages_before=-1, messages_after=-1, upper_bound=-1):
     
+    """Core scrapping function"""
+    
     check_for_client(client)
-    
-    
     
     print("Scraping the message list...")
 
@@ -368,6 +398,8 @@ def getMessageList(client, thread_id, verbose=1, messages_before=-1, messages_af
     return msg_list
 
 def scrapeMessages(address, password, thread_id, readable_time=True, readable_name=True, verbose=1,messages_before=-1, messages_after=-1, upper_bound=-1):
+    
+    """Main scrapping function"""
     
     while not address:
         address = input("Please enter your email adress:")
@@ -463,18 +495,11 @@ def create_lambda_values_msg(fieldnames, attachments_as_string = False, datetime
             fieldnames_checked.append("Reactions")
             
     return lambda_values, fieldnames_checked
-
-def build_attachment_list(liste):
-    indexes = get_attachment_indexes(liste)
-    result = []
-    for i in indexes:
-        result.append(liste[i])
-    return result
         
 
-os.path.isfile(fname) 
-
 def save_msg_json(liste, namefile, fieldnames = ['Attachments','Author','AuthorName','Datetime','ExtensibleAttachment','IsRead','Mentions','Reactions','Sticker','Text','Timestamp','MessageID']):
+    
+    
     def handle_message(liste):
         #implementer values to save
         for i in liste[::-1]:
@@ -521,6 +546,7 @@ def load_json(path):
             
 def save_msg_csv(liste, namefile, values_to_save = ["Datetime","AuthorName","Text","MessageID"]):
     
+        """Save the messages objects in the 'liste' in a file with the csv format"""
     
     if os.path.isfile(namefile):
         answer = ""
@@ -561,6 +587,9 @@ def regex_command_text(liste, pattern):
     return result_list
             
 def regex_command(liste, pattern, fieldnames = ['Text']):
+    
+    """Executes a regex query against the text in the fields mentionned in 'fieldnames'"""
+    
     result_list = []
     lambda_values = []
     
