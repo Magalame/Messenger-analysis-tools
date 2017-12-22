@@ -12,7 +12,6 @@ import csv
 import json
 import re
 import urllib.request
-#import numpy as np
 
 parser = argparse.ArgumentParser()
 
@@ -99,7 +98,7 @@ def check_for_time(liste):
 def get_attachment_indexes(liste): 
     
     """Returns an array with the index of the message objects in 'liste' that have an attachment. 
-    See build_attachment_list for returning a list of message object instead of a list of index"""
+    See build_list_from_indexes for returning a list of message object instead of a list of index"""
     
     check_for_list(liste)
     
@@ -115,8 +114,14 @@ def get_attachment_indexes(liste):
             
     return attached
 
-def build_attachment_list(liste):
-    indexes = get_attachment_indexes(liste)
+def build_list_from_indexes(liste, indexes = -1):
+    
+    """Takes a list with message objects, and a second with indexes and extract the objects from 
+    the first one corresponding to the indexes in the second one"""
+    
+    
+    if indexes == -1:
+        indexes = get_attachment_indexes(liste)
     result = []
     for i in indexes:
         result.append(liste[i])
@@ -546,7 +551,7 @@ def load_json(path):
             
 def save_msg_csv(liste, namefile, values_to_save = ["Datetime","AuthorName","Text","MessageID"]):
     
-        """Save the messages objects in the 'liste' in a file with the csv format"""
+    """Save the messages objects in the 'liste' in a file with the csv format"""
     
     if os.path.isfile(namefile):
         answer = ""
@@ -570,7 +575,10 @@ def save_msg_csv(liste, namefile, values_to_save = ["Datetime","AuthorName","Tex
                 print(msg)
                 csv_writer.writerow([value(msg) for value in lambda_values])
               
-def regex_command_text(liste, pattern):
+def regex_query_text(liste, pattern):
+    
+    """Deprecated, use regex_query"""
+    
     result_list = []
     
     try:
@@ -586,7 +594,7 @@ def regex_command_text(liste, pattern):
     
     return result_list
             
-def regex_command(liste, pattern, fieldnames = ['Text']):
+def regex_query(liste, pattern, fieldnames = ['Text']):
     
     """Executes a regex query against the text in the fields mentionned in 'fieldnames'"""
     
