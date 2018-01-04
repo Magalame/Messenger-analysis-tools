@@ -524,11 +524,11 @@ def save_msg_json(liste, namefile, fieldnames = ['Attachments','Author','AuthorN
     
     if os.path.isfile(namefile):
         answer = ""
-        while answer.lower() != "y" or answer.lower() != "n":
+        while answer.lower() != "y" and answer.lower() != "n":
             answer = input(namefile + " already exist, do you want to overwrite it?")
     
-    if answer == "n":
-        return # we exit, as we cannot write 
+        if answer == "n":
+            return # we exit, as we cannot write 
     
     lambda_values, fields_checked = create_lambda_values_msg(fieldnames)
     
@@ -555,7 +555,7 @@ def save_msg_csv(liste, namefile, values_to_save = ["Datetime","AuthorName","Tex
     
     if os.path.isfile(namefile):
         answer = ""
-        while answer.lower() != "y" or answer.lower() != "n":
+        while answer.lower() != "y" and answer.lower() != "n":
             answer = input(namefile + " already exist, do you want to overwrite it?")
     
         if answer == "n":
