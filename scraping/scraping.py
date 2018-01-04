@@ -558,8 +558,8 @@ def save_msg_csv(liste, namefile, values_to_save = ["Datetime","AuthorName","Tex
         while answer.lower() != "y" or answer.lower() != "n":
             answer = input(namefile + " already exist, do you want to overwrite it?")
     
-    if answer == "n":
-        return # we exit, as we cannot write 
+        if answer == "n":
+            return # we exit, as we cannot write 
     
     with open(namefile, "w", newline='',encoding='utf-8') as pfile:
         
